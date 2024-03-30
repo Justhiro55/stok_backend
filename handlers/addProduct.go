@@ -14,38 +14,59 @@ func AddProductHandler(w http.ResponseWriter, r *http.Request) {
 
 	db.Init()
 
-	var err error
-
-	_, err = db.DB.Exec("INSERT INTO brands (name) VALUES ($1)", brandName)
+	tx, err := db.DB.Begin()
 	if err != nil {
+		log.Println("Error starting transaction:", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	_, err = tx.Exec("INSERT INTO brands (name) VALUES ($1)", brandName)
+	if err != nil {
+		tx.Rollback()
 		log.Println("Error inserting brand:", err)
 		http.Error(w, "Failed to insert brand information", http.StatusInternalServerError)
 		return
 	}
 
 	var brandID int64
-	err = db.DB.QueryRow("SELECT brand_id FROM brands WHERE name = $1", brandName).Scan(&brandID)
+	err = tx.QueryRow("SELECT brand_id FROM brands WHERE name = $1", brandName).Scan(&brandID)
 	if err != nil {
+		tx.Rollback()
+		log.Println("Error getting brand ID:", err)
 		http.Error(w, "Failed to get brand ID", http.StatusInternalServerError)
 		return
 	}
 
-	_, err = db.DB.Exec("INSERT INTO products (name, brand_id) VALUES ($1, $2)", productName, brandID)
+	_, err = tx.Exec("INSERT INTO products (name, brand_id) VALUES ($1, $2)", productName, brandID)
 	if err != nil {
+		tx.Rollback()
+		log.Println("Error inserting product:", err)
 		http.Error(w, "Failed to insert product information", http.StatusInternalServerError)
 		return
 	}
 
 	var productID int64
-	err = db.DB.QueryRow("SELECT product_id FROM products WHERE name = $1", productName).Scan(&productID)
+	err = tx.QueryRow("SELECT product_id FROM products WHERE name = $1", productName).Scan(&productID)
 	if err != nil {
+		tx.Rollback()
+		log.Println("Error getting product ID:", err)
 		http.Error(w, "Failed to get product ID", http.StatusInternalServerError)
 		return
 	}
 
-	_, err = db.DB.Exec("INSERT INTO images (image_path, product_id) VALUES ($1, $2)", imagePath, productID)
+	_, err = tx.Exec("INSERT INTO images (image_path, product_id) VALUES ($1, $2)", imagePath, productID)
 	if err != nil {
+		tx.Rollback()
+		log.Println("Error inserting image:", err)
 		http.Error(w, "Failed to insert image information", http.StatusInternalServerError)
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		log.Println("Error committing transaction:", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
