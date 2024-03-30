@@ -17,19 +17,20 @@ func ProductInfoHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var productID int64
-	var err error
-	productID, err = strconv.ParseInt(productIDStr, 10, 64)
+	productID, err := strconv.ParseInt(productIDStr, 10, 64)
 	if err != nil {
 		http.Error(w, "Invalid Product ID", http.StatusBadRequest)
 		return
 	}
 
-	row := db.DB.QueryRow("SELECT product_id, name, brand_id FROM products WHERE product_id = $1", productID)
+	row := db.DB.QueryRow(`
+		SELECT products.name, brands.name
+		FROM products
+		JOIN brands ON products.brand_id = brands.brand_id
+		WHERE products.product_id = $1`, productID)
 
-	var productName string
-	var brandID int64
-	err = row.Scan(&productID, &productName, &brandID)
+	var productName, brandName string
+	err = row.Scan(&productName, &brandName)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			http.Error(w, "Product not found", http.StatusNotFound)
@@ -40,9 +41,27 @@ func ProductInfoHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	rows, err := db.DB.Query("SELECT image_path FROM images WHERE product_id = $1", productID)
+	if err != nil {
+		log.Printf("Database error: %s", err)
+		http.Error(w, "Server error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	imagePaths := []string{}
+	for rows.Next() {
+		var imagePath string
+		if err := rows.Scan(&imagePath); err != nil {
+			log.Printf("Database error: %s", err)
+			continue
+		}
+		imagePaths = append(imagePaths, imagePath)
+	}
+
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"id":       productID,
-		"name":     productName,
-		"brand_id": brandID,
+		"productName": productName,
+		"brandName":   brandName,
+		"images":      imagePaths,
 	})
 }
