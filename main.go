@@ -23,6 +23,7 @@ func main() {
 	})
 
 	http.Handle("/api/products", corsHandler.Handler(http.HandlerFunc(handlers.ProductInfoHandler)))
+	http.Handle("/api/addProduct", corsHandler.Handler(http.HandlerFunc(handlers.AddProductHandler)))
 
 	log.Println("Server starting on http://localhost:8080")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
