@@ -9,9 +9,9 @@ import (
 )
 
 type ProductData struct {
-	ProductName string `json:"product_name"`
-	BrandName   string `json:"brand_name"`
-	ImagePath   string `json:"image_path"`
+	ProductName string   `json:"product_name"`
+	BrandName   string   `json:"brand_name"`
+	ImagePath   []string `json:"image_path"`
 }
 
 func AddProductHandler(w http.ResponseWriter, r *http.Request) {
@@ -67,12 +67,14 @@ func AddProductHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = tx.Exec("INSERT INTO images (image_path, product_id) VALUES ($1, $2)", data.ImagePath, productID)
-	if err != nil {
-		tx.Rollback()
-		log.Println("Error inserting image:", err)
-		http.Error(w, "Failed to insert image information", http.StatusInternalServerError)
-		return
+	for _, path := range data.ImagePath {
+		_, err = tx.Exec("INSERT INTO images (image_path, product_id) VALUES ($1, $2)", path, productID)
+		if err != nil {
+			tx.Rollback()
+			log.Println("Error inserting image:", err)
+			http.Error(w, "Failed to insert image information", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	err = tx.Commit()
