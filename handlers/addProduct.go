@@ -24,6 +24,12 @@ func AddProductHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if data.ProductName == "" || data.BrandName == "" || len(data.ImagePath) == 0 {
+		log.Println("Error: Empty fields detected")
+		http.Error(w, "Empty fields detected", http.StatusBadRequest)
+		return
+	}
+
 	db.Init()
 
 	tx, err := db.DB.Begin()
