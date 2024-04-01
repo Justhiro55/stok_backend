@@ -21,6 +21,7 @@ func GetAllProductsHandler(w http.ResponseWriter, r *http.Request) {
 		JOIN brands ON products.brand_id = brands.brand_id
 		LEFT JOIN images ON products.product_id = images.product_id
 		ORDER BY products.product_id, images.image_path
+	
 	`
 	rows, err := db.DB.Query(query)
 	if err != nil {
@@ -32,6 +33,7 @@ func GetAllProductsHandler(w http.ResponseWriter, r *http.Request) {
 
 	var products []ProductInfo
 	var currentProduct *ProductInfo
+	var lastProductName string
 
 	for rows.Next() {
 		var productName, brandName, imagePath string
@@ -41,18 +43,24 @@ func GetAllProductsHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		if currentProduct == nil || currentProduct.ProductName != productName {
+		if lastProductName != productName {
+			if currentProduct != nil {
+				products = append(products, *currentProduct)
+			}
 			currentProduct = &ProductInfo{
 				ProductName: productName,
 				BrandName:   brandName,
 				ImagePaths:  []string{},
 			}
-			products = append(products, *currentProduct)
+			lastProductName = productName
 		}
 
-		if imagePath != "" {
+		if imagePath != "" && currentProduct != nil {
 			currentProduct.ImagePaths = append(currentProduct.ImagePaths, imagePath)
 		}
+	}
+	if currentProduct != nil {
+		products = append(products, *currentProduct)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
