@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -39,23 +40,29 @@ func AddProductHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = tx.Exec("INSERT INTO brands (name) VALUES ($1)", data.BrandName)
-	if err != nil {
-		tx.Rollback()
-		log.Println("Error inserting brand:", err)
-		http.Error(w, "Failed to insert brand information", http.StatusInternalServerError)
-		return
-	}
-
 	var brandID int64
+	// ブランドが既に存在するかどうかをチェック
 	err = tx.QueryRow("SELECT brand_id FROM brands WHERE name = $1", data.BrandName).Scan(&brandID)
-	if err != nil {
+	if err == nil {
+		// ブランドが存在する場合は既存のIDを使用
+	} else if err != sql.ErrNoRows {
+		// その他のエラーがあればロールバックしてエラーを返す
 		tx.Rollback()
-		log.Println("Error getting brand ID:", err)
-		http.Error(w, "Failed to get brand ID", http.StatusInternalServerError)
+		log.Println("Error checking existing brand:", err)
+		http.Error(w, "Failed to check existing brand", http.StatusInternalServerError)
 		return
+	} else {
+		// ブランドが存在しない場合、新規挿入してIDを取得
+		err := tx.QueryRow("INSERT INTO brands (name) VALUES ($1) RETURNING brand_id", data.BrandName).Scan(&brandID)
+		if err != nil {
+			tx.Rollback()
+			log.Println("Error inserting brand:", err)
+			http.Error(w, "Failed to insert brand information", http.StatusInternalServerError)
+			return
+		}
 	}
 
+	// 商品を挿入
 	_, err = tx.Exec("INSERT INTO products (name, brand_id) VALUES ($1, $2)", data.ProductName, brandID)
 	if err != nil {
 		tx.Rollback()
@@ -64,6 +71,7 @@ func AddProductHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 商品IDを取得
 	var productID int64
 	err = tx.QueryRow("SELECT product_id FROM products WHERE name = $1", data.ProductName).Scan(&productID)
 	if err != nil {
@@ -73,6 +81,7 @@ func AddProductHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 画像を挿入
 	for _, path := range data.ImagePath {
 		_, err = tx.Exec("INSERT INTO images (image_path, product_id) VALUES ($1, $2)", path, productID)
 		if err != nil {
@@ -83,6 +92,7 @@ func AddProductHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// トランザクションをコミット
 	err = tx.Commit()
 	if err != nil {
 		log.Println("Error committing transaction:", err)
