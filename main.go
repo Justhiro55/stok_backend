@@ -22,7 +22,7 @@ func main() {
 		AllowCredentials: true,
 	})
 
-	http.Handle("/api/products", corsHandler.Handler(http.HandlerFunc(handlers.ProductInfoHandler)))
+	http.Handle("/api/getAllProduct", corsHandler.Handler(http.HandlerFunc(handlers.GetAllProductsHandler)))
 	http.Handle("/api/addProduct", corsHandler.Handler(http.HandlerFunc(handlers.AddProductHandler)))
 
 	log.Println("Server starting on http://localhost:8080")
