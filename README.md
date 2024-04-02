@@ -27,15 +27,27 @@ go run .
 
 ### 4. エラーハンドリングのテスト
 ```bash
-sh test_error.sh
+sh test/test_error.sh
 ```
 
 ### 5. すべての製品が取得できるかのテスト
 ```bash
-sh test_getAllProducts.sh
+sh test/test_getAllProducts.sh
 ```
 
 ### 6. 製品が正常に追加されるかのテスト
 ```bash
-sh test_addProduct.sh
+sh test/test_addProduct.sh
 ```
+
+## 作業時間記録表
+1. Go言語のリサーチ，DBの選定(30分)
+2. 開発環境のセットアップ(30分)
+3. データベース設計(1時間)
+4. ロジックの設計
+	・addProductのロジック(1時間)
+	・商品情報を取得するロジック(1時間)
+5. APIの実装(30分)
+6. デバッグ・不具合修正(2時間)
+7. リファクタリング(1時間)
+8. テストの作成(1時間)
